@@ -111,7 +111,7 @@ python server/mcp_server.py streamable-http
 - `taCity` (可选): 城市
 - `taBatchNumber` (可选): 评定批次
 - `pageIndex` (可选): 页码
-- `pageSize` (可选): 每页条数，最大50
+- `pageSize` (可选): 每页条数，默认10，最大10
 
 **返回值**:
 - `total`: 景区总数
@@ -136,7 +136,7 @@ python server/mcp_server.py streamable-http
 - `taProvince` (可选): 省份
 - `taCity` (可选): 城市
 - `pageIndex` (可选): 页码
-- `pageSize` (可选): 每页条数，最大50
+- `pageSize` (可选): 每页条数，默认10，最大10
 
 **返回值**:
 - `total`: 村镇总数
@@ -161,7 +161,7 @@ python server/mcp_server.py streamable-http
 - `regCapitalMin` / `regCapitalMax` (可选): 注册资本区间，单位万元
 - `operStatus` (可选): 经营状态
 - `pageIndex` (可选): 页码
-- `pageSize` (可选): 每页条数，最大50
+- `pageSize` (可选): 每页条数，默认10，最大10
 
 **返回值**:
 - `total`: 旅宿总数
@@ -187,7 +187,7 @@ python server/mcp_server.py streamable-http
 - `regCapitalMin` / `regCapitalMax` (可选): 注册资本区间，单位万元
 - `operStatus` (可选): 经营状态
 - `pageIndex` (可选): 页码
-- `pageSize` (可选): 每页条数，最大50
+- `pageSize` (可选): 每页条数，默认10，最大10
 
 **返回值**:
 - `total`: 旅行社总数
@@ -208,7 +208,7 @@ python server/mcp_server.py streamable-http
 1. **Tool选择**: 景区、重点村镇、旅宿和旅行社分别使用对应 Tool，不混用筛选参数。
 2. **地区格式**: 旅宿多级地区使用英文逗号分隔，景区和直辖市筛选按 Tool 说明使用短名。
 3. **区间校验**: 成立日期和注册资本下限不能大于上限。
-4. **API限制**: 分页查询一页最多获取50条数据。
+4. **API限制**: 分页查询一页最多获取10条数据。
 5. **合法空结果**: 未命中时返回 `total=0` 和 `resultList=[]`。
 
 ## 使用提问示例

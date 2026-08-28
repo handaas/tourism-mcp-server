@@ -123,7 +123,7 @@ def _unwrap_backend_data(result: Any) -> Any:
     return result.get("data")
 
 
-def _pagination_error(page_index: int, page_size: int, maximum: int = 50) -> dict[str, Any] | None:
+def _pagination_error(page_index: int, page_size: int, maximum: int = 10) -> dict[str, Any] | None:
     if page_index < 1:
         return {"error": "pageIndex 必须大于等于 1", "parameter": "pageIndex"}
     if page_size < 1 or page_size > maximum:
@@ -188,7 +188,7 @@ def _date_range_error(
     title="国标文旅景区检索",
     description=(
         "按景区名称、景区类别、省份、城市和评定批次搜索国标景区。taName 支持模糊搜索，"
-        "其他条件按筛选值匹配；景区省份使用北京、广东等短名。返回景区类别、地址、评定信息和运营主体，pageSize 最大 50。"
+        "其他条件按筛选值匹配；景区省份使用北京、广东等短名。返回景区类别、地址、评定信息和运营主体，pageSize 最大 10。"
     ),
     annotations=READ_ONLY_TOOL,
 )
@@ -231,7 +231,7 @@ def tourism_countryside_search(
     title="餐饮民宿与星级饭店检索",
     description=(
         "搜索餐饮民宿、星级饭店及其运营企业。可按名称、旅宿类型、省市区、成立日期、"
-        "注册资本（万元）和经营状态筛选；address 多级值用逗号分隔，pageSize 最大 50。"
+        "注册资本（万元）和经营状态筛选；address 多级值用逗号分隔，pageSize 最大 10。"
     ),
     annotations=READ_ONLY_TOOL,
 )
