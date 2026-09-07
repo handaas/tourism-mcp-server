@@ -1,11 +1,13 @@
 # 文旅：文旅景区搜索
 
-[该MCP服务提供国标景区、乡村旅游重点村镇、餐饮民宿、星级饭店和出境游旅行社查询功能。](https://www.handaas.com/)
+[该MCP服务提供国标景区搜索与详情、文旅规划明细、乡村旅游重点村镇、餐饮民宿、星级饭店和出境游旅行社查询功能。](https://www.handaas.com/)
 
 
 ## 主要功能
 
 - 🏞️ 国标景区搜索
+- 📋 国标景区详情（面积、特色、景点、文化价值和运营主体）
+- 🗺️ 文旅规划明细（项目、建设规模、最新进展和相关单位）
 - 🏡 乡村旅游重点村镇搜索
 - 🏨 餐饮民宿与星级饭店搜索
 - ✈️ 出境游旅行社搜索
@@ -101,6 +103,15 @@ python server/mcp_server.py streamable-http
 
 ## 可用工具
 
+### 推荐查询流程
+
+1. 用 `tourism_scenic_area_search` 搜索国标景区，或用 `tourism_countryside_search` 搜索乡村旅游重点村镇，获取结果中的 `taId` 并原样传给后续工具。2026-09-07 实测两类搜索均已返回 `taId`；旧版搜索接口文档中的 `_id` 为记录ID，以实际返回字段为准。
+2. 将国标景区ID作为 `taId` 传给 `tourism_scenic_area_detail`，查询景区详细信息。
+3. 将国标景区或乡村旅游景区ID作为 `taId` 传给 `tourism_planning_list`，分页查询规划明细。
+
+景区ID应取自搜索接口实际返回的数据，不使用景区名称或运营主体的 `nameId` 代替。若搜索结果没有可用景区ID，应提示缺少关联标识，不猜测ID。
+已实测通过“国标景区搜索 → 景区详情”及“乡村旅游搜索 → 文旅规划”的 `taId` 关联链。
+
 ### 1. tourism_scenic_area_search
 **功能**: 国标文旅景区搜索
 
@@ -116,6 +127,8 @@ python server/mcp_server.py streamable-http
 **返回值**:
 - `total`: 景区总数
 - `resultList`: 景区列表
+  - `taId`: 景区ID（2026-09-07 实测返回），用于后续详情和规划查询
+  - `_id`: 景区记录ID（本地搜索文档字段），用于后续详情/规划查询的 `taId`
   - `taName`: 景区名称
   - `taCategory`: 景区类别
   - `taProvince`: 省份
@@ -141,6 +154,8 @@ python server/mcp_server.py streamable-http
 **返回值**:
 - `total`: 村镇总数
 - `resultList`: 重点村镇列表
+  - `taId`: 景区ID（2026-09-07 实测返回），用于后续规划查询
+  - `_id`: 村镇记录ID（本地搜索文档字段），用于后续规划查询的 `taId`
   - `taName`: 村镇名称
   - `taBatchNumber`: 批次号
   - `taLicenseNumber`: 证号
@@ -203,6 +218,51 @@ python server/mcp_server.py streamable-http
   - `businessTags`: 业务标签
   - `operStatus`: 经营状态
 
+### 5. tourism_scenic_area_detail
+**功能**: 国标景区详情
+
+**数据产品ID**: `6a98ec3fcc51ed421bf06fa2`
+
+**参数**:
+- `taId` (Schema 可选，实际调用请传入): 景区ID，来自 `tourism_scenic_area_search` 的实际搜索结果。按 PDF 文档保留可选性，但 2026-09-07 实测省略时上游返回 `21008 参数错误`；MCP 会保留该错误，不伪造成功结果。
+
+**返回值**:
+- `total`: 详情记录数，空结果为0
+- `resultList`: 将上游详情对象包装为列表，保留原始字段与嵌套结构
+  - `taName`: 景区名称
+  - `taLandArea` / `taBuildingArea`: 占地面积 / 建筑面积，字符串原值；接口文档未注明单位，不推断或自动换算
+  - `taFeatures`: 核心特色
+  - `taAttractions`: 主要设施/景点，字符串列表
+  - `taCultureValues`: 文化价值
+  - `taIntroduction`: 简介
+  - `taAddress`: 地址对象，含 `province`（省）、`city`（市）、`district`（区）、`value`（具体地址）
+  - `taCategory`: 景区类型
+  - `taBatchNumber`: 等级批次
+  - `taOperatingEntity`: 运营主体列表，每项含 `nameId`（运营主体ID）和 `name`（运营主体名称）
+
+**说明**: 此接口无分页参数；不得把景区详情中的嵌套列表拆成多条景区记录。
+
+### 6. tourism_planning_list
+**功能**: 文旅规划明细
+
+**数据产品ID**: `6a995506a96d8a6e55377905`
+
+**参数**:
+- `taId` (必填): 景区ID，来自 `tourism_scenic_area_search` 或 `tourism_countryside_search` 的实际搜索结果，不接受空字符串
+- `pageIndex` (可选): 页码，默认1，最小1
+- `pageSize` (可选): 每页条数，默认10，最大10，最小1
+
+**返回值**:
+- `total`: 规划记录总数，保留上游总数而非当前页条数
+- `resultList`: 规划记录列表，保留原始字段
+  - `taPlanningType`: 类别
+  - `taPlanningName`: 项目名称
+  - `taPlanningDesc`: 建设内容与规模
+  - `taPlanningNews`: 最新进展
+  - `taPlanningCompany`: 相关单位
+
+**说明**: `pageSize` 超过10、页码小于1或 `taId` 为空时返回参数错误，不调用上游接口。空页或空结果仅表示本次接口未返回规划数据，不能据此断言景区不存在或没有规划。
+
 ## 使用注意事项
 
 1. **Tool选择**: 景区、重点村镇、旅宿和旅行社分别使用对应 Tool，不混用筛选参数。
@@ -210,6 +270,7 @@ python server/mcp_server.py streamable-http
 3. **区间校验**: 成立日期和注册资本下限不能大于上限。
 4. **API限制**: 分页查询一页最多获取10条数据。
 5. **合法空结果**: 未命中时返回 `total=0` 和 `resultList=[]`。
+6. **详情与规划**: 景区详情不分页；规划查询需传入景区ID。面积等未声明单位的字段保留原值，不自行推断。
 
 ## 使用提问示例
 
@@ -233,6 +294,16 @@ python server/mcp_server.py streamable-http
 2. 搜索名称中包含“旅行社”的企业
 3. 查看北京存续状态的出境游旅行社
 
+### tourism_scenic_area_detail (国标景区详情)
+1. 先搜索故宫景区，再查询其核心特色、主要景点和文化价值
+2. 根据刚查到的景区ID，查看景区地址及运营主体
+3. 查询指定国标景区的占地面积、建筑面积和简介，保留接口原始单位表达
+
+### tourism_planning_list (文旅规划明细)
+1. 搜索某个国标景区，查询其文旅规划项目名称和建设规模
+2. 根据乡村旅游重点村镇搜索结果中的景区ID，查看规划最新进展和相关单位
+3. 继续读取该景区文旅规划的第2页，每页10条
+
 ## 测试验证
 
 ```bash
@@ -240,4 +311,8 @@ python -m py_compile server/mcp_server.py
 python -m unittest discover -s tests -v
 ```
 
-当前服务包含 7 个离线单元测试。真实接口验证需在本地 `.env` 配置有效凭据后执行，测试输出不得提交真实业务响应或凭据。
+离线测试覆盖6个工具的注册与只读标记、新增接口的参数契约、Product ID 路由、详情嵌套字段、规划分页边界、空结果及上游错误透传，不需要真实凭据。
+
+2026-09-07 验证：18 个离线测试通过；真实 MCP 检查 23 项通过 22 项，覆盖6个工具及规划分页。规划非空样本共14条，第1页10条、第2页4条；详情嵌套字段与搜索对象一致。唯一已知差异是详情省略 `taId` 返回 `21008`，与 PDF 的可选标注不一致；传入有效ID的调用链正常。
+
+接口依据：`国标景区详情_2026-09-07_15-14-48.pdf`、`文旅规划明细_2026-09-07_15-14-54.pdf`。真实接口验证需在本地 `.env` 配置有效凭据并开通对应数据产品后执行，测试输出不得提交真实业务响应或凭据。
