@@ -18,14 +18,24 @@ load_dotenv()
 
 mcp = FastMCP(
     "文旅：文旅景区搜索",
-    instructions='面向国标景区、乡村旅游重点村镇、餐饮民宿、星级饭店和出境游旅行社的分类型搜索与资源核验。',
+    instructions=(
+        '面向国标景区、乡村旅游重点村镇、餐饮民宿、星级饭店和出境游旅行社的分类型搜索与资源核验。'
+        '先通过搜索获取景区ID，再查询国标景区详情或文旅规划明细；乡村旅游搜索结果也可用于规划查询。'
+    ),
     dependencies=["python-dotenv", "requests"],
 )
 
 GATEWAY_BASE_URL = "https://console.handaas.com/api/v1/integrator/call_api"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
-PRODUCT_IDS = {'scenic_search': '6a7c2b14dfa4a2f37b191ab2', 'countryside_search': '6a7c2f6edfa4a2f37b191b5a', 'accommodation_search': '6a7c31428c8d379dd486c56a', 'travel_agency_search': '6a7c52df71276c00fb93e8dd'}
+PRODUCT_IDS = {
+    'scenic_search': '6a7c2b14dfa4a2f37b191ab2',
+    'scenic_detail': '6a98ec3fcc51ed421bf06fa2',
+    'planning_list': '6a995506a96d8a6e55377905',
+    'countryside_search': '6a7c2f6edfa4a2f37b191b5a',
+    'accommodation_search': '6a7c31428c8d379dd486c56a',
+    'travel_agency_search': '6a7c52df71276c00fb93e8dd',
+}
 
 READ_ONLY_TOOL = ToolAnnotations(
     readOnlyHint=True,
@@ -189,6 +199,8 @@ def _date_range_error(
     description=(
         "按景区名称、景区类别、省份、城市和评定批次搜索国标景区。taName 支持模糊搜索，"
         "其他条件按筛选值匹配；景区省份使用北京、广东等短名。返回景区类别、地址、评定信息和运营主体，pageSize 最大 10。"
+        "结果中的景区记录ID（搜索文档字段 _id，若实际返回 taId 则直接使用）可作为 taId "
+        "传给 tourism_scenic_area_detail 或 tourism_planning_list。"
     ),
     annotations=READ_ONLY_TOOL,
 )
@@ -207,10 +219,50 @@ def tourism_scenic_area_search(
 
 
 @mcp.tool(
+    title="国标景区详情",
+    description=(
+        "根据国标景区搜索结果中的景区ID查询名称、占地面积、建筑面积、核心特色、主要设施/景点、"
+        "文化价值、简介、地址、景区类型、等级批次及运营主体。taId 按接口文档为可选，建议先调用"
+        "tourism_scenic_area_search 获取ID后传入；不传时不保证返回指定景区。返回 total 与 resultList，"
+        "保留地址字典和运营主体列表，面积字段按上游原值返回，不推断单位。"
+    ),
+    annotations=READ_ONLY_TOOL,
+)
+def tourism_scenic_area_detail(taId: str | None = None) -> dict[str, Any]:
+    """按景区ID查询国标景区详情，保留地址、景点和运营主体的嵌套结构。"""
+    return _normalize_single(
+        call_api(PRODUCT_IDS["scenic_detail"], _compact_params({"taId": taId}))
+    )
+
+
+@mcp.tool(
+    title="文旅规划明细",
+    description=(
+        "根据景区ID分页查询文旅规划类别、项目名称、建设内容与规模、最新进展和相关单位。"
+        "taId 必填，来自 tourism_scenic_area_search 或 tourism_countryside_search 的搜索结果，"
+        "不能以名称代替ID；pageIndex 从 1 开始，pageSize 默认 10、最大 10。"
+        "返回 total 与 resultList，保留规划记录原始字段；空结果仅表示接口本次未返回规划数据。"
+    ),
+    annotations=READ_ONLY_TOOL,
+)
+def tourism_planning_list(taId: str, pageIndex: int = 1, pageSize: int = 10) -> dict[str, Any]:
+    """按国标景区或乡村旅游景区ID分页查询文旅规划明细。"""
+    if not taId.strip():
+        return {"error": "taId 不能为空，请先通过国标景区或乡村旅游搜索获取景区ID", "parameter": "taId"}
+    if error := _pagination_error(pageIndex, pageSize):
+        return error
+    return _normalize_paged(
+        call_api(PRODUCT_IDS["planning_list"], {"taId": taId, "pageIndex": pageIndex, "pageSize": pageSize})
+    )
+
+
+@mcp.tool(
     title="乡村旅游重点村镇检索",
     description=(
         "按村镇名称、入选批次、省份和城市搜索全国乡村旅游重点村镇。"
         "返回名称、证号、地区、评定年份、发布日期和图片信息，支持分页并返回 total 与 resultList。"
+        "结果中的景区记录ID（搜索文档字段 _id，若实际返回 taId 则直接使用）可作为 taId "
+        "传给 tourism_planning_list 查询文旅规划。"
     ),
     annotations=READ_ONLY_TOOL,
 )
