@@ -17,7 +17,7 @@ from mcp.types import ToolAnnotations
 load_dotenv()
 
 mcp = FastMCP(
-    "文旅：文旅景区搜索",
+    "文旅景区搜索",
     instructions=(
         '面向国标景区、乡村旅游重点村镇、餐饮民宿、星级饭店和出境游旅行社的分类型搜索与资源核验。'
         '先通过搜索获取景区ID，再查询国标景区详情或文旅规划明细；乡村旅游搜索结果也可用于规划查询。'

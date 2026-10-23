@@ -20,7 +20,7 @@ SPEC.loader.exec_module(server)
 class ContractTests(TestCase):
     def test_registered_tools_and_annotations(self) -> None:
         tools = asyncio.run(server.mcp.list_tools())
-        self.assertEqual(server.mcp.name, '文旅：文旅景区搜索')
+        self.assertEqual(server.mcp.name, '文旅景区搜索')
         self.assertEqual(
             {tool.name for tool in tools},
             {
